@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "396510382024",
+    "project_id": "pokedex-56cc5",
+    "storage_bucket": "pokedex-56cc5.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396510382024:android:d86efa036672c81a1262fd",
+        "android_client_info": {
+          "package_name": "edu.itesm.pokedex"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "396510382024-rokbbfoogeqtc1tdmnp6ucu3lic7h7cb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLEtP0IjsgSEVmCCraFrSccYLxGH0HBpM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "396510382024-rokbbfoogeqtc1tdmnp6ucu3lic7h7cb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

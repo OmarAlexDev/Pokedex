@@ -21,10 +21,13 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.database.*
 import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.FirebaseStorage
 
 import edu.itesm.pokedex.databinding.ActivityMainBinding
 import java.io.ByteArrayOutputStream
+import java.net.MalformedURLException
 import java.util.*
+import java.util.function.BiPredicate
 
 
 class MainActivity : AppCompatActivity() {
@@ -37,6 +40,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var analytics: FirebaseAnalytics
     private lateinit var bundle: Bundle
 
+    private val RICapture = 10007
+    //Ultima coordenada
+    private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
+    //Foto
+    private lateinit var foto:Bitmap
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,9 +58,20 @@ class MainActivity : AppCompatActivity() {
         analytics = FirebaseAnalytics.getInstance(this)
         bundle = Bundle()
 
+        fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
 
+        activaReferencia()
     }
 
+    private fun activaReferencia(){
+        if(ActivityCompat.checkSelfPermission(this,android.Manifest.permission.ACCESS_FINE_LOCATION) !=
+                PackageManager.PERMISSION_GRANTED &&
+            ActivityCompat.checkSelfPermission(this,android.Manifest.permission.ACCESS_COARSE_LOCATION)!=
+                PackageManager.PERMISSION_GRANTED){
+            ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION),10007)
+        }
+    }
 
 
 
@@ -63,6 +82,59 @@ class MainActivity : AppCompatActivity() {
         val tipo = findViewById<EditText>(R.id.tipo).text
         if(nombre.isNotEmpty() && nombre.isNotBlank() && tipo.isNotEmpty() && tipo.isNotBlank()){
 
+            var latitude = 0.0
+            var longitude = 0.0
+
+            //Obtener última coordenada
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED) {
+                fusedLocationProviderClient.lastLocation
+                    .addOnSuccessListener { location: Location? ->
+                        // Got last known location. In some rare situations this can be null.
+                        if (location != null) {
+                            latitude = location.latitude
+                            longitude = location.longitude
+                        }
+                    }
+            }
+
+            if(foto != null){
+                //Convertir a bytes la foto
+                val baos = ByteArrayOutputStream()
+                foto.compress(Bitmap.CompressFormat.JPEG, 100, baos)
+                val data = baos.toByteArray()
+
+                //ID único para el nombre de la foto en storage
+                val fileName = UUID.randomUUID().toString()
+                //acceso a storage
+                val storage_reference = FirebaseStorage.getInstance().getReference("/pokefotos/$fileName")
+                val uploadTask = storage_reference.putBytes(data)
+                //Si se ejecuta bien la tarea de subir imagen
+                uploadTask.addOnSuccessListener {
+                    //si se obtuvo el url de la imagen en storage
+                    storage_reference.downloadUrl.addOnSuccessListener {
+                        //grabo el pokemon en RealTime database
+                        val id = reference.push().key
+                        val pokemon = Pokemon(
+                            id.toString(),
+                            nombre.toString(),
+                            tipo.toString(),
+                            latitude,
+                            longitude,
+                            it.toString()
+                        )
+                        reference.child(id!!).setValue(pokemon)
+                        nombre.clear()
+                        tipo.clear()
+                        Toast.makeText(this,"POKEMON CAPTURADO!", Toast.LENGTH_LONG).show()
+                    }
+                }.addOnFailureListener{
+                    Toast.makeText(this, "Error al subir un pokemon", Toast.LENGTH_LONG).show()
+                }
+            }
 
             bundle.putString("edu_itesm_pokedex_main", "added_pokemon")
             analytics.logEvent("main", bundle)
@@ -71,6 +143,25 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(applicationContext, "error en nombre o tipo!", Toast.LENGTH_LONG).show()
         }
 
+    }
+
+    public fun logout(view: View){
+        Firebase.auth.signOut()
+        startActivity(Intent(this,LoginActivity::class.java))
+        finish()
+    }
+
+    public fun fotoPokemon(view: View){
+        val tomaFoto = Intent (MediaStore.ACTION_IMAGE_CAPTURE)
+        startActivityForResult(tomaFoto,RICapture)
+
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if(requestCode == RICapture && resultCode == RESULT_OK) {
+            foto = data?.extras?.get("data") as Bitmap
+        }
     }
 
 
